@@ -1,7 +1,11 @@
 name: Hello World Training Workflow
 
 on:
+  # Permite ejecutar el workflow manualmente desde la interfaz de GitHub
   workflow_dispatch:
+  # Dispara el workflow cuando se abre o edita un issue (propuesta)
+  issues:
+    types: [opened, edited]
 
 jobs:
   greet:
