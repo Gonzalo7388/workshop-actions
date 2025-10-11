@@ -1,6 +1,9 @@
 name: Hello World Training Workflow
 
 on:
+  # Dispara el workflow al hacer push a la rama 'main'
+  push:
+    branches: [ main ]
   # Permite ejecutar el workflow manualmente desde la interfaz de GitHub
   workflow_dispatch:
   # Dispara el workflow cuando se abre o edita un issue (propuesta)
