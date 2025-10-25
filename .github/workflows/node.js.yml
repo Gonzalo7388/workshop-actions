@@ -1,31 +1,79 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
-
-name: Node.js CI
+name: Node.js CI/CD
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  # Permite ejecutar el workflow manualmente
+  workflow_dispatch:
 
 jobs:
+  # Job 1: Build y Test (ejecutado en la versión 22.x de Node.js)
+  # Este job debe completarse con éxito antes de intentar empaquetar
   build:
-
+    name: Build and Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x # Usaremos 22.x para el build que se va a empaquetar
+          cache: 'npm'
+          
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+  # Job 2: Empaquetar y Publicar (depende de que 'build' sea exitoso)
+  package-and-publish:
+    needs: 
+      - build # Solo se ejecuta si el job 'build' fue exitoso
+    
+    name: 🐳 Package & Publish
+    runs-on: ubuntu-latest
+    permissions:
+      # Estos permisos son necesarios para que el token pueda escribir en el registro
+      contents: read
+      packages: write 
 
     steps:
-    - uses: actions/checkout@v5
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+      - uses: actions/checkout@v5
+
+      # Configuración de Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Autenticación en GitHub Container Registry (ghcr.io)
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.actor }}
+          # Usamos tu secreto personalizado TOKEN_ARTIFACT
+          password: ${{ secrets.TOKEN_ARTIFACT }}
+          registry: ghcr.io
+
+      # Generar metadatos para la imagen (tags, labels)
+      - name: Generate Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }} # Nombre de la imagen: ghcr.io/usuario/repo
+          tags: |
+            type=raw,value=latest,enable={{endsWith(github.ref, github.base_ref)}}
+            type=sha,format=short
+
+      # Construir y empujar la imagen Docker
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
