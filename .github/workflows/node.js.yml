@@ -55,7 +55,7 @@ jobs:
         with:
           username: ${{ github.actor }}
           # Usamos tu secreto personalizado TOKEN_ARTIFACT
-          password: ${{ secrets.TOKEN_ARTIFACT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
 
       # Generar metadatos para la imagen (tags, labels)
