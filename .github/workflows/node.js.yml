@@ -65,7 +65,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }} # Nombre de la imagen: ghcr.io/usuario/repo
           tags: |
-            type=raw,value=latest,enable={{endsWith(github.ref, github.base_ref)}}
+            type=raw,value=latest,enable=endsWith(github.ref, github.base_ref) 
             type=sha,format=short
 
       # Construir y empujar la imagen Docker
